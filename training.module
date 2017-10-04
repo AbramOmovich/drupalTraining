@@ -302,6 +302,7 @@ function training_form_user_login_block_alter(&$form, &$form_state, $form_id) {
     '#size' => '15',
   ];
 
+
   $form['name']['#required'] = TRUE;
   $form['pass']['#required'] = TRUE;
   array_unshift($form['#validate'], 'training_secret_key_validate');
@@ -459,7 +460,7 @@ function training_get_currencies() {
     $currencies['date'] = format_date(REQUEST_TIME);
 
     unset($currencies['@attributes']);
-    cache_set('currencies', $currencies, 'cache', REQUEST_TIME + 30);
+    cache_set('currencies', $currencies, 'cache', REQUEST_TIME + 300);
   }
   else {
     $currencies = $currencies->data;
