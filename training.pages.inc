@@ -1,92 +1,32 @@
 <?php
 
-function training_theme_list() {
-  $list = [
-    'items' => ['List', 'Table', 'Image', 'Access', ],
-    'title' => 'List of links to themes',
-    'type'  => 'ol',
-    'attributes' => [],
-  ];
+function training_files_page() {
+  ctools_include('modal');
+  ctools_include('ajax');
 
-  foreach ($list['items'] as &$item){
-    $item = theme_link([
-      'text' => $item,
-      'path' => 'training/theme/' . strtolower($item),
-      'options' => [
-        'attributes' => [],
-        'html' => [],
-      ],
-    ]);
-  }
-
-  return theme_item_list($list);
-}
-
-function training_theme_table() {
+  training_load_managed_files();
   $table = [
+    'caption' => ctools_modal_text_button(t('Upload file'), 'training/files/nojs', t('Upload file')),
     'header' => [
-      'header 1', 'header 2', '', 'header 3',
+      '№', 'user_id', 'path', 'status', 'download',
     ],
-    'rows' => [
-      [ 'data' => ['1', 'Ivan', '334-342-4334'], ],
-      [ 'data' => ['2', 'Antuan', '134-372-5543'], ],
-      [ 'data' => ['3', 'Abram', '098-134-5554'], ],
-      [ 'data' => ['3', 'Abram', '098-134-5554'], ],
+    'rows' => [],
+    'attributes' => [
+      'id' => 'uploaded-files-table'
     ],
-    'attributes' => [],
-    'caption' => 'Theme table sample',
     'colgroups' => [],
     'sticky' => FALSE,
     'empty' => NULL,
   ];
 
-  foreach ($table['rows'] as &$row){
-    $row['class'] = ['rowClass'];
+  ctools_modal_add_js();
 
-    $length = count($row['data']);
-    for ($i = 0; $i < $length; $i++){
-      if (1 == $i) {
-        $row['data'][$i] = ['data' => $row['data'][$i], 'colspan' => 2];
-      }
-    }
-  }
+  global $user;
+  drupal_add_js(array('uid' => $user->uid, ), 'setting');
+  drupal_add_css(drupal_get_path('module', 'training') . '/css/uploaded_files.css');
+  drupal_add_js(drupal_get_path('module', 'training') . '/js/uploaded_files.js');
 
   return theme_table($table);
 }
 
-function training_theme_image() {
-  $list = [
-    'items' => [],
-    'title' => 'List of image styles',
-    'type'  => 'ul',
-    'attributes' => [],
-  ];
-
-  $params = [
-    'path' => 'modules/image/sample.png',
-    'attributes' => [
-      'class' => 'simple-image',
-    ],
-    'width' =>  '',
-    'height' => '',
-  ];
-
-  $list['items'] []= theme_image($params);
-  foreach (array_keys(image_styles()) as $style) {
-    $params['style_name'] = $style;
-    $list['items'] []= theme_image_style($params);
-  }
-
-
-  return theme_item_list($list);
-}
-
-function training_theme_access() {
-  if (user_access('access protected content')) {
-    return 'Custom access for rendered content';
-  }
-  else {
-    return 'Custom access inversed for rendered content';
-  }
-}
 

@@ -1,0 +1,7 @@
+#uploaded-files-table th:nth-child(2) {
+  display: none;
+}
+
+#uploaded-files-table td:nth-child(2) {
+  display: none;
+}
