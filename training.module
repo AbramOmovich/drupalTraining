@@ -1,3 +1,43 @@
 <?php
 
 
+/**
+ * Implements hook_entity_info().
+ */
+function training_entity_info() {
+  $return = array(
+    'training_message' => array(
+      'label' => t('Training message'),
+      'controller class' => 'NodeController',
+      'base table' => 'training_messages',
+      'uri callback' => 'node_uri',
+      'fieldable' => TRUE,
+
+      'entity keys' => array(
+        'id' => 'mid',
+        'bundle' => 'type',
+        'language' => 'language',
+      ),
+      'bundle keys' => array(
+        'bundle' => 'type',
+      ),
+      'bundles' => array(),
+      'view modes' => array(
+        'full' => array(
+          'label' => t('Full content'),
+          'custom settings' => FALSE,
+        ),
+        'teaser' => array(
+          'label' => t('Teaser'),
+          'custom settings' => TRUE,
+        ),
+        'rss' => array(
+          'label' => t('RSS'),
+          'custom settings' => FALSE,
+        ),
+      ),
+    ),
+  );
+
+  return $return;
+}

@@ -1,0 +1,47 @@
+<?php
+
+/**
+ *
+ * Implements hook_schema().
+ */
+function training_schema() {
+  $schema['training_messages'] = array(
+    'description' => 'The table for massages.',
+    'fields' => array(
+      'mid' => array(
+        'description' => 'The primary identifier for a message.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'description' => 'User id that left message',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'type' => array(
+        'description' => 'Type of message',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'title' => array(
+        'description' => 'Tittle of message',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'body' => array(
+        'description' => 'Text of message',
+        'type' => 'text',
+        'length' => 500,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('mid'),
+  );
+
+  return $schema;
+}
