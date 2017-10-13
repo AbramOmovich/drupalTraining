@@ -1,0 +1,7 @@
+.training-delete{
+  background: url("../img/delete-16x16.png") no-repeat;
+}
+
+.training-edit{
+  background-image: url("../img/edit.png");
+}

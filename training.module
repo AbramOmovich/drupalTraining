@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Implements hook_menu().
+ */
+function training_menu() {
+  $items['messages'] = array(
+    'title' => 'Messages',
+    'page callback' => 'training_messages_page',
+    'file' => 'training.pages.inc',
+    'menu_name' => 'main-menu',
+    'access arguments' => array('access content'),
+  );
+
+  return $items;
+}
 
 /**
  * Implements hook_entity_info().
@@ -8,36 +22,74 @@ function training_entity_info() {
   $return = array(
     'training_message' => array(
       'label' => t('Training message'),
-      'controller class' => 'NodeController',
+      'entity class' => 'Entity',
+      'controller class' => 'EntityAPIController',
       'base table' => 'training_messages',
       'uri callback' => 'node_uri',
-      'fieldable' => TRUE,
+      'fieldable' => FALSE,
 
       'entity keys' => array(
         'id' => 'mid',
-        'bundle' => 'type',
-        'language' => 'language',
+        'uid' => 'uid'
       ),
-      'bundle keys' => array(
-        'bundle' => 'type',
-      ),
+      'bundle keys' => array(),
       'bundles' => array(),
-      'view modes' => array(
-        'full' => array(
-          'label' => t('Full content'),
-          'custom settings' => FALSE,
-        ),
-        'teaser' => array(
-          'label' => t('Teaser'),
-          'custom settings' => TRUE,
-        ),
-        'rss' => array(
-          'label' => t('RSS'),
-          'custom settings' => FALSE,
-        ),
-      ),
     ),
   );
 
   return $return;
 }
+
+function send_message_form(){
+  $form = array();
+
+  $form['title'] = array(
+    '#title' => t('Message title'),
+    '#name' => 'title',
+    '#type' => 'textfield',
+  );
+  $form['message'] = array(
+    '#title' => t('Type your message'),
+    '#name' => 'message',
+    '#type' => 'textarea',
+    '#rows' => '2',
+    '#cols' => '20',
+
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Send'),
+  );
+
+  return $form;
+}
+
+
+
+function send_message_form_validate(&$form, &$form_state){
+
+  if(empty($form_state['values']['title']) || empty($form_state['values']['message'])){
+    form_set_error("empty title or message text", "Empty title or message text");
+  }
+
+  if (mb_strlen($form_state['values']['title']) > 255) form_set_error('long_title', t("Tittle is to long"));
+
+}
+
+function send_message_form_submit(&$form, &$form_state){
+  global $user;
+  $entity_type = 'training_message';
+
+  $params = array(
+    'type' => 1,
+    'uid' => $user->uid,
+    'title' => $form_state['values']['title'],
+    'body' => $form_state['values']['message'],
+  );
+
+  drupal_set_message(t("Message '{$form_state['values']['title']}' successfully added"));
+
+  $entity = entity_create($entity_type, $params);
+  $entity->save();
+}
+
