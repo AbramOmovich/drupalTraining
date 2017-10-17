@@ -9,7 +9,22 @@ function training_menu() {
     'page callback' => 'training_messages_page',
     'file' => 'training.pages.inc',
     'menu_name' => 'main-menu',
-    'access arguments' => array('access content'),
+    'access callback' => 'user_is_logged_in',
+  );
+
+  $items['message/%message/delete'] = array(
+    'page arguments' => array(1),
+    'page callback' => 'training_message_delete',
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['message/%message/edit'] = array(
+    'page arguments' => array(1),
+    'page callback' => 'training_messages_edit',
+    'file' => 'training.pages.inc',
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_CALLBACK,
   );
 
   return $items;
@@ -26,11 +41,10 @@ function training_entity_info() {
       'controller class' => 'EntityAPIController',
       'base table' => 'training_messages',
       'uri callback' => 'node_uri',
-      'fieldable' => FALSE,
+      'fieldable' => TRUE,
 
       'entity keys' => array(
         'id' => 'mid',
-        'uid' => 'uid'
       ),
       'bundle keys' => array(),
       'bundles' => array(),
@@ -40,13 +54,47 @@ function training_entity_info() {
   return $return;
 }
 
-function send_message_form(){
+function message_load($msgId){
+  return entity_load('training_message', array($msgId));
+}
+
+function training_message_delete($message){
+  if (!empty($message)){
+    $message = array_values($message)[0];
+    drupal_set_message(t('Message @message has been deleted', array('@message' => $message->title)));
+    $message->delete();
+  }
+  drupal_goto('messages');
+}
+
+function training_messages_edit($message){
+  if (!empty($message)){
+    $message = array_values($message)[0];
+    $form = drupal_get_form('training_send_message_form');
+
+    $form['title']['#value'] = $message->title;
+    $form['message']['#value'] = $message->body;
+    $form['mid']['#value'] = $message->mid;
+
+    return training_messages_page($form);
+  }
+  drupal_goto('messages');
+}
+
+
+/**
+ * Generates form for adding messages.
+ *
+ * @return array
+ */
+function training_send_message_form(){
   $form = array();
 
   $form['title'] = array(
     '#title' => t('Message title'),
     '#name' => 'title',
     '#type' => 'textfield',
+    '#required' => TRUE,
   );
   $form['message'] = array(
     '#title' => t('Type your message'),
@@ -54,7 +102,12 @@ function send_message_form(){
     '#type' => 'textarea',
     '#rows' => '2',
     '#cols' => '20',
-
+    '#required' => TRUE,
+  );
+  $form['mid'] = array(
+    '#name' => 'mid',
+    '#type' => 'hidden',
+    '#default_value' => '-1',
   );
   $form['submit'] = array(
     '#type' => 'submit',
@@ -64,19 +117,11 @@ function send_message_form(){
   return $form;
 }
 
-
-
-function send_message_form_validate(&$form, &$form_state){
-
-  if(empty($form_state['values']['title']) || empty($form_state['values']['message'])){
-    form_set_error("empty title or message text", "Empty title or message text");
-  }
-
+function training_send_message_form_validate(&$form, &$form_state){
   if (mb_strlen($form_state['values']['title']) > 255) form_set_error('long_title', t("Tittle is to long"));
-
 }
 
-function send_message_form_submit(&$form, &$form_state){
+function training_send_message_form_submit(&$form, &$form_state){
   global $user;
   $entity_type = 'training_message';
 
@@ -87,9 +132,59 @@ function send_message_form_submit(&$form, &$form_state){
     'body' => $form_state['values']['message'],
   );
 
-  drupal_set_message(t("Message '{$form_state['values']['title']}' successfully added"));
+  if ($form_state['values']['mid'] != '-1'){
+    $message = entity_load($entity_type, array($form_state['values']['mid']));
+    if (!empty($message)){
+      $message = array_values($message)[0];
+      $params['mid'] = $form_state['values']['mid'];
+      $message->title = $form_state['values']['title'];
+      $message->body = $form_state['values']['message'];
+      $message->save();
+      drupal_goto('messages');
+    }
+  }
+  else {
+    drupal_set_message(t("Message '{$form_state['values']['title']}' successfully added"));
 
-  $entity = entity_create($entity_type, $params);
-  $entity->save();
+    $entity = entity_create($entity_type, $params);
+    $entity->save();
+  }
 }
 
+/**
+ * Checks if user has left messages.
+ * @return bool
+ */
+function training_user_has_messages(){
+  global $user;
+  $entityQuery = new EntityFieldQuery();
+  $entities = $entityQuery
+    ->entityCondition('entity_type', 'training_message')
+    ->propertyCondition('uid', $user->uid)
+    ->execute();
+
+  if (!empty($entities)) return TRUE;
+  else return FALSE;
+}
+
+/**
+ * Implements hook_node_access().
+ */
+function training_node_access($node, $op, $account) {
+  $type = is_string($node) ? $node : $node->type;
+  if ($type == 'article' && !training_user_has_messages()) {
+      return NODE_ACCESS_DENY;
+  }
+  return NODE_ACCESS_IGNORE;
+}
+
+/**
+ * Hides teasers of articles.
+ */
+function training_node_view_alter(&$build) {
+  if ($build['#view_mode'] == 'teaser' && $build['#node']->type == 'article'){
+    if (!training_user_has_messages()){
+      unset($build);
+    }
+  }
+}
