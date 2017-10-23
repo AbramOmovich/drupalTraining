@@ -1,0 +1,55 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ *
+ * Table for currencies courses.
+ */
+function training_schema(){
+  $schema['training_currencies'] = array(
+    'description' => 'The for currencies courses.',
+    'fields' => array(
+      'c_id' => array(
+        'description' => 'Currency code.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'c_char_code' => array(
+        'description' => 'Currency char code',
+        'type' => 'varchar',
+        'length' => 10,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'c_scale' => array(
+        'description' => 'Currency scale',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'c_name' => array(
+        'description' => 'Currency name',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'c_rate' => array(
+        'description' => 'Currency rate',
+        'type' => 'float',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'c_updated_at' => array(
+        'description' => 'Timestamp of currency updated',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('c_id'),
+  );
+
+  return $schema;
+}

@@ -1,3 +1,285 @@
 <?php
 
+/**
+ * @file
+ *
+ * Drupal 7 api training module.
+ * Task 5.
+ *
+ * This module defines view with currencies courses from National Bank of
+ * Belarus. The courses are stored in database, in predefined table
+ * 'training_currencies'. Also it provides updating functionality using batch
+ * tasks.
+ *
+ * And by the way it includes task 3 from this training. Functionality from this
+ * task is placed after 'TASK 3' annotation and has no changes.
+ */
 
+/**
+ * Implements hook_menu().
+ */
+function training_menu() {
+  $items ['training/files'] = array(
+    'title' => t("Uploaded files"),
+    'page callback' => 'training_files_page',
+    'description' => 'Uploaded files page',
+    'file' => 'training.pages.inc',
+    'access callback' => 'user_is_logged_in',
+  );
+
+  $item = array(
+    'link_title' => t('Currencies courses'),
+    'link_path' => 'training/currency-courses',
+    'menu_name' => 'main-menu',
+  );
+  menu_link_save($item);
+
+  $items['training/files/%ctools_js'] = array(
+    'page callback' => 'training_modal_call',
+    'page arguments' => array(2),
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_CALLBACK,
+  );
+
+
+  return $items;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ *
+ * Generates form for updating information about currency courses.
+ *
+ * @return array
+ */
+function training_update_currencies_form($form, $form_state) {
+  $form = array();
+
+  $form['submit'] = array(
+    '#value' => t('Update courses'),
+    '#type' => 'submit',
+  );
+  return $form;
+}
+
+function training_update_currencies_form_submit(&$form, &$form_state) {
+  $currencies = training_get_currencies();
+
+  if ($currencies){
+    $currencies = $currencies['Currency'];
+
+    $operations = array();
+    foreach ($currencies as $currency) {
+      $operations[] = array('training_update_currency', array($currency, REQUEST_TIME));
+    }
+
+    batch_set(array(
+      'operations' => $operations,
+      'finished' => 'training_batch_finished',
+      'title' => t('Updating currencies'),
+    ));
+  }
+  else {
+    form_set_error('currency_error', t('Unable to update courses'));
+  }
+}
+
+/**
+ * @param $currency
+ * @param $date
+ *
+ * Updates currency course record in DB.
+ *
+ */
+function training_update_currency($currency, $date){
+  db_merge('training_currencies')
+    ->key(array('c_id' => $currency['@attributes']['Id']))
+    ->fields(array(
+      'c_id' => $currency['@attributes']['Id'],
+      'c_char_code' => $currency['CharCode'],
+      'c_name' => $currency['Name'],
+      'c_scale' => $currency['Scale'],
+      'c_rate' => $currency['Rate'],
+      'c_updated_at' => $date
+    ))->execute();
+}
+
+/**
+ * @param $success
+ * @param $results
+ * @param $operations
+ *
+ * Displays message after currencies have been updated.
+ */
+function training_batch_finished($success, $results, $operations) {
+  if ($success){
+    drupal_set_message(t('Currencies updated'));
+  }
+  else {
+    drupal_set_message(t('Completed with errors'), 'error');
+  }
+}
+
+/**
+ * Loads custom fields for views module.
+ * @return array
+ */
+function training_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'training'),
+  );
+}
+
+/**
+ * Implements hook_views_pre_render().
+ *
+ * Adds updating form if user is admin.
+ */
+function training_views_pre_render(&$view) {
+  if ($view->name == 'currency_cources'){
+    if (training_role_check()){
+      $form = drupal_get_form('training_update_currencies_form');
+      $view->attachment_before = drupal_render($form);
+    }
+  }
+}
+
+/**
+ * Loads currencies from National Bank of Belarus or returns false otherwise.
+ * @return bool|mixed
+ */
+function training_get_currencies() {
+  $xml = simplexml_load_file('http://www.nbrb.by/Services/XmlExRates.aspx');
+  if (!$xml) {
+    return FALSE;
+  }
+
+  $json_string = json_encode($xml);
+  return json_decode($json_string, TRUE);
+}
+
+/**
+ * Checks if user has roles.
+ * @return bool
+ */
+function training_role_check() {
+  global $user;
+  $allowed_roles = array('administrator');
+
+  foreach ($user->roles as $role) {
+    if (in_array($role, $allowed_roles)) {
+      return TRUE;
+    };
+  }
+  return FALSE;
+}
+
+//================================ TASK 3 ====================================//
+function training_modal_call($ajax) {
+  if ($ajax) {
+    ctools_include('ajax');
+    ctools_include('modal');
+
+    $form_state = array(
+      'ajax' => TRUE,
+      'title' => t('File uploading form'),
+    );
+
+    $output = ctools_modal_form_wrapper('training_file_upload_form', $form_state);
+
+    if (!empty($form_state['ajax_commands'])) {
+      $output = $form_state['ajax_commands'];
+    }
+
+    // Return the ajax instructions to the browser via ajax_render().
+    print ajax_render($output);
+    drupal_exit();
+  }
+  else {
+    return drupal_get_form('training_file_upload_form');
+  }
+}
+
+function training_file_upload_form($form, $form_state) {
+  $form = array();
+
+  $form['user_file'] = array(
+    '#title' => t('Choose file to upload'),
+    '#name' => 'user_file',
+    '#type' => 'managed_file',
+    '#upload_location' => 'private://user_files/',
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Choose file to upload'),
+  );
+  return $form;
+}
+
+function training_file_upload_form_submit(&$form, &$form_state) {
+  ctools_include('modal');
+  ctools_modal_add_js();
+
+  if ($form['user_file']['#file']){
+    $form['user_file']['#file']->status = FILE_STATUS_PERMANENT;
+    file_save($form['user_file']['#file']);
+
+  }
+
+  $form_state['ajax_commands'] []= ctools_modal_command_dismiss();
+  training_load_managed_files();
+  training_dropSettings('loaded', FALSE);
+  //drupal_exit();
+}
+
+function training_load_managed_files() {
+  $files = db_select('file_managed', 'fm')
+    ->fields('fm', array('fid', 'uid', 'uri', 'status'))
+    ->condition('uri', '%user_files%', 'LIKE')
+    ->execute()
+    ->fetchAll();
+
+  if (!empty($files)){
+    foreach ($files as &$file){
+      $file->uri = file_create_url($file->uri);
+    }
+  }
+
+  drupal_add_js(array('files' => $files, ), 'setting');
+}
+
+/**
+ * Implements hook_file_download().
+ */
+function training_file_download($uri) {
+  if (training_user_has_files()){
+    $file = array_values( file_load_multiple(array(), array('uri' => $uri)))[0];
+    return array(
+      'Content-Type' => $file->filemime,
+    );
+  }
+
+  return -1;
+}
+
+function training_user_has_files() {
+  global $user;
+  $files = db_select('file_managed', 'fm')
+    ->fields('fm', array('uid'))
+    ->condition('uri', '%user_files%', 'LIKE')
+    ->condition('uid', $user->uid)
+    ->range(0,1)
+    ->execute()
+    ->fetchAll();
+  if (!empty($files)) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+function training_dropSettings($name, $setting){
+  drupal_add_js(array($name => $setting), 'setting');
+}
