@@ -1,3 +1,137 @@
 <?php
 
+/**
+ * Implements hook_menu().
+ */
+function training_menu() {
+  $items = [];
 
+  $items['training/tasks'] = array(
+    'title' => 'Task amount',
+    'page callback' => 'training_task_amount',
+    'description' => 'Displays translated amount of tasks.',
+    'access arguments' => ['access content'],
+  );
+  $items['training/%ctools_js/register_days'] = array(
+    'title' => 'Calculate registration days',
+    'type' => MENU_CALLBACK,
+    'page callback' => 'training_register_days',
+    'page arguments' => array(1),
+    'description' => 'Calculates user\'s registration days',
+    'access callback' => 'user_is_logged_in',
+  );
+  $items['training/text'] = array(
+    'title' => 'Text area',
+    'page callback' => 'training_text_area',
+    'description' => 'Displays text area page',
+    'access arguments' => ['access content'],
+  );
+
+  return $items;
+}
+
+/**
+ *  Generates plural form for task amount.
+ *
+ *  @return array
+ */
+function training_task_amount() {
+  $output[] = [
+    '#type' => 'html_tag',
+    '#tag' => 'h3',
+    '#value' => format_plural(random_int(0, 100), '1 task', '@count tasks'),
+  ];
+
+  if (user_is_logged_in()) {
+    ctools_include('ajax');
+    $link = [
+      '#markup' => ctools_ajax_text_button(t('Show date'), 'training/nojs/register_days', '', '', 'use-ajax')];
+    $output[] = $link;
+
+    drupal_add_js(drupal_get_path('module', 'training') . '/js/training.js',
+      'file'
+    );
+  }
+
+  return $output;
+}
+
+
+/**
+ * Returns current user registration date and amount of days till new year to JS
+ *
+ * @param $ajax
+ */
+function training_register_days($ajax) {
+  if ($ajax) {
+    ctools_include('ajax');
+
+    $now = new DateTime();
+    $next_year = new DateTime();
+
+    $now->setTimestamp(REQUEST_TIME);
+    $year = (int) $now->format('Y');
+    $year++;
+    $next_year->setDate($year, 1,1)->setTime(0,0);
+    $days_remain = $next_year->diff($now)->format('%a');
+
+
+    drupal_add_js(['register_date' => training_get_register_date()], 'setting');
+    drupal_add_js(['days_remain' => $days_remain], 'setting');
+    $commands[] = array('command' => 'alert_message');
+
+    print ajax_render($commands);
+    drupal_exit();
+  }
+}
+
+function training_get_register_date() {
+  global $user;
+  global $language;
+  return format_date($user->created, 'custom', 'd F Y', $language->language);
+}
+
+function training_text_area() {
+  drupal_add_js(drupal_get_path('module', 'training') . '/js/training.js',
+    'file'
+  );
+  $form = drupal_get_form('training_text_form');
+
+  return $form;
+}
+
+function training_text_form() {
+  $form = [];
+
+  $form['text'] = [
+    '#type' => 'textarea',
+    '#default_value' => 'Some text in text area',
+  ];
+  $form['send'] = [
+    '#type' => 'submit',
+    '#value' => 'Send',
+    '#ajax' => [
+      'callback' => 'training_text_form_ajax_submit',
+    ]
+  ];
+
+  return $form;
+}
+
+/**
+ * Replaces special chars from string and returns it to JS
+ *
+ * @param $form
+ * @param $form_state
+ */
+function training_text_form_ajax_submit($form, $form_state) {
+  if (!empty($form['text']['#value'])) {
+    ctools_include('ajax');
+
+    drupal_add_js(['safe_string' => check_plain($form['text']['#value'])], 'setting');
+
+    $commands[] = array('command' => 'training_insert_text');
+    print ajax_render($commands);
+  }
+  drupal_exit();
+}

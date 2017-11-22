@@ -1,0 +1,17 @@
+msgid ""
+msgstr ""
+"Language-Team: Russian\n"
+"Content-Type: text/plain; charset=utf-8\n"
+
+msgid "1 task"
+msgid_plural "@count tasks"
+msgstr[0] "@count задача"
+msgstr[1] "@count задачи"
+msgstr[2] "@count задач"
+
+msgid "You was registered !register_date. There are !days_remain days till New Year."
+msgstr "Вы были зарегестрированы !register_date. До Нового Года !days_remain дней"
+msgid "Task amount"
+msgstr "Количество задач"
+msgid "Displays translated amount of tasks."
+msgstr "Количество задач и дней регистрации."
